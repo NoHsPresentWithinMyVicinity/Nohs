@@ -3,34 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Temporary Video Link Generator</title>
+    <title>WebGL Rotating Cube</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #000;
+        }
+    </style>
 </head>
 <body>
-    <h1>Video Link Generator</h1>
-    <p>Select a video file to generate a temporary link:</p>
-
-    <input type="file" id="videoInput" accept="video/*">
-    <p id="videoLink"></p>
-    <video id="videoPreview" controls width="600" style="display: none;"></video>
+    <canvas id="webglCanvas"></canvas>
 
     <script>
-        document.getElementById('videoInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
 
-            if (file) {
-                // Create a temporary URL for the video
-                const blobUrl = URL.createObjectURL(file);
+        if (!gl) {
+            alert('WebGL not supported in this browser!');
+            throw new Error('WebGL not supported.');
+        }
 
-                // Display the link
-                const linkElement = document.getElementById('videoLink');
-                linkElement.innerHTML = `<a href="${blobUrl}" target="_blank">View Video</a>`;
-                
-                // Show the video preview
-                const videoPreview = document.getElementById('videoPreview');
-                videoPreview.src = blobUrl;
-                videoPreview.style.display = 'block';
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Vertex Shader
+        const vertexShaderSource = `
+            attribute vec4 a_position;
+            uniform mat4 u_matrix;
+            void main() {
+                gl_Position = u_matrix * a_position;
             }
-        });
+        `;
+
+        // Fragment Shader
+        const fragmentShaderSource = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(1, 0, 0, 1); // Red color
+            }
+        `;
+
+        // Compile shaders
+        function compileShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        // Link program
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+            return;
+        }
+        gl.useProgram(program);
+
+        // Create cube vertices
+        const vertices = new Float32Array([
+            // Front face
+            -0.5, -0.5,  0.5,
+             0.5, -0.5,  0.5,
+             0.5,  0.5,  0.5,
+            -0.5,  0.5,  0.5,
+            // Back face
+            -0.5, -0.5, -0.5,
+             0.5, -0.5, -0.5,
+             0.5,  0.5, -0.5,
+            -0.5,  0.5, -0.5,
+        ]);
+
+        const indices = new Uint16Array([
+            0, 1, 2, 0, 2, 3, // Front
+            4, 5, 6, 4, 6, 7, // Back
+            0, 1, 5, 0, 5, 4, // Bottom
+            3, 2, 6, 3, 6, 7, // Top
+            0, 3, 7, 0, 7, 4, // Left
+            1, 2, 6, 1, 6, 5, // Right
+        ]);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        const indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+        const aPosition = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(aPosition);
+        gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+
+        const uMatrix = gl.getUniformLocation(program, 'u_matrix');
+
+        let rotation = 0;
+
+        function draw() {
+            rotation += 0.01;
+
+            // Create a rotation matrix
+            const cos = Math.cos(rotation);
+            const sin = Math.sin(rotation);
+            const matrix = new Float32Array([
+                cos, 0, sin, 0,
+                0, 1, 0, 0,
+                -sin, 0, cos, 0,
+                0, 0, 0, 1
+            ]);
+
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.uniformMatrix4fv(uMatrix, false, matrix);
+
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+            requestAnimationFrame(draw);
+        }
+
+        gl.clearColor(0, 0, 0, 1);
+        gl.enable(gl.DEPTH_TEST);
+        draw();
     </script>
 </body>
 </html>
