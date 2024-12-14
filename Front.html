@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporary Video Link Generator</title>
+</head>
+<body>
+    <h1>Video Link Generator</h1>
+    <p>Select a video file to generate a temporary link:</p>
+
+    <input type="file" id="videoInput" accept="video/*">
+    <p id="videoLink"></p>
+    <video id="videoPreview" controls width="600" style="display: none;"></video>
+
+    <script>
+        document.getElementById('videoInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+
+            if (file) {
+                // Create a temporary URL for the video
+                const blobUrl = URL.createObjectURL(file);
+
+                // Display the link
+                const linkElement = document.getElementById('videoLink');
+                linkElement.innerHTML = `<a href="${blobUrl}" target="_blank">View Video</a>`;
+                
+                // Show the video preview
+                const videoPreview = document.getElementById('videoPreview');
+                videoPreview.src = blobUrl;
+                videoPreview.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
